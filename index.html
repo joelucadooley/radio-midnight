@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radio Midnight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#07090f; --ink:#e9e7df; --mute:#6b7280; --faint:#3a4150; --moon:#7fd6e4; --lamp:#f4b261; --lamp-deep:#e08a3c; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{ background:radial-gradient(120% 80% at 50% 120%, rgba(20,28,44,.6), transparent 60%),
+      radial-gradient(90% 70% at 50% -10%, rgba(127,214,228,.05), transparent 55%), var(--bg);
+    color:var(--ink); font-family:"IBM Plex Mono",ui-monospace,monospace;
+    min-height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+  body::after{ content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 1px, transparent 1px 3px); mix-blend-mode:overlay; opacity:.5; }
+  .wrap{ width:min(760px,92vw); padding:28px 4vw; position:relative; z-index:2;}
+
+  #start{ position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:26px; text-align:center; background:radial-gradient(60% 60% at 50% 45%, rgba(12,16,24,.4), var(--bg) 80%); transition:opacity .8s ease; }
+  #start.hide{opacity:0; pointer-events:none;}
+  .brand{font-family:"Instrument Serif",serif; font-size:clamp(44px,9vw,86px); line-height:.95;}
+  .brand em{font-style:italic; color:var(--lamp);}
+  .tagline{color:var(--mute); font-size:13px; max-width:34ch; line-height:1.7;}
+  .tune-btn{ margin-top:6px; cursor:pointer; border:1px solid rgba(244,178,97,.4);
+    background:linear-gradient(180deg, rgba(244,178,97,.12), rgba(244,178,97,.03)); color:var(--lamp);
+    font-family:"IBM Plex Mono",monospace; font-size:13px; letter-spacing:.28em; text-transform:uppercase; padding:16px 34px; border-radius:2px; transition:.3s; }
+  .tune-btn:hover{background:rgba(244,178,97,.16); box-shadow:0 0 40px -8px rgba(244,178,97,.4);}
+
+  #main{opacity:0; transition:opacity 1s ease .2s;}
+  #main.show{opacity:1;}
+  .topline{display:flex; justify-content:space-between; align-items:baseline; font-size:11px; letter-spacing:.22em; color:var(--mute); text-transform:uppercase;}
+  .topline .live{color:var(--lamp); display:flex; align-items:center; gap:8px;}
+  .dotpulse{width:7px; height:7px; border-radius:50%; background:var(--lamp); box-shadow:0 0 10px var(--lamp); animation:bp 2.4s ease-in-out infinite;}
+  @keyframes bp{0%,100%{opacity:.35; transform:scale(.85);}50%{opacity:1; transform:scale(1.15);}}
+
+  .now{margin:30px 0 18px; position:relative;}
+  .now::before{content:""; position:absolute; left:-10%; top:-30%; width:120%; height:170%;
+    background:radial-gradient(closest-side, rgba(244,178,97,.16), transparent 70%); filter:blur(6px); z-index:-1;}
+  .city{font-family:"Instrument Serif",serif; font-size:clamp(40px,8.5vw,76px); line-height:1;}
+  .country{font-family:"Instrument Serif",serif; font-style:italic; font-size:clamp(18px,3.5vw,26px); color:var(--lamp); margin-top:8px; min-height:1.1em;}
+
+  .strip{margin:8px 0; position:relative; width:100%; aspect-ratio:2/1; max-height:300px; border:1px solid var(--faint); border-radius:3px;
+    overflow:hidden; background:linear-gradient(180deg,#070a11,#0a0f18 55%,#090d15);}
+  svg{display:block; width:100%; height:100%;}
+  .grid{stroke:rgba(120,140,170,.08); stroke-width:1; vector-effect:non-scaling-stroke;}
+  .equator{stroke:rgba(120,140,170,.16); stroke-dasharray:2 5; vector-effect:non-scaling-stroke;}
+  .land{fill:#162232; stroke:rgba(150,180,200,.30); stroke-width:.5; vector-effect:non-scaling-stroke;}
+  .nightband{fill:url(#nb);}
+  .meridian{stroke:var(--moon); stroke-width:1.5; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 5px var(--moon));}
+  .meridian-glow{stroke:var(--moon); stroke-width:20; opacity:.10; vector-effect:non-scaling-stroke;}
+  .meridlabel{fill:var(--moon); font-family:"IBM Plex Mono",monospace; font-size:7px; letter-spacing:1px; text-anchor:middle;}
+  .star{fill:var(--lamp);}
+  .star-halo{fill:var(--lamp); opacity:.18;}
+  .striplabel{position:absolute; bottom:6px; font-size:9px; letter-spacing:.2em; color:var(--mute); text-transform:uppercase;}
+
+  .station{margin-top:14px; padding-top:18px; border-top:1px solid var(--faint);}
+  .station .label{font-size:10px; letter-spacing:.3em; color:var(--mute); text-transform:uppercase;}
+  .station .name{font-size:15px; margin-top:8px; color:var(--ink); line-height:1.4; min-height:1.4em;}
+  .station .meta{font-size:11px; color:var(--mute); margin-top:6px;}
+
+  .controls{display:flex; align-items:center; gap:18px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid var(--faint);}
+  .ctrl-btn{cursor:pointer; background:none; border:1px solid var(--faint); color:var(--ink); padding:9px 16px; border-radius:2px; font-family:inherit; font-size:11px; letter-spacing:.18em; text-transform:uppercase; transition:.25s;}
+  .ctrl-btn:hover{border-color:var(--lamp); color:var(--lamp);}
+  .slider-wrap{display:flex; align-items:center; gap:10px; font-size:11px; color:var(--mute);}
+  input[type=range]{-webkit-appearance:none; appearance:none; height:2px; background:var(--faint); width:110px; outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:var(--moon); cursor:pointer; box-shadow:0 0 8px var(--moon);}
+  input[type=range]::-moz-range-thumb{width:13px; height:13px; border:none; border-radius:50%; background:var(--moon); cursor:pointer;}
+  .countdown{margin-left:auto; font-size:11px; color:var(--mute);}
+  .countdown b{color:var(--moon);}
+  .status{font-size:11px; color:var(--mute); margin-top:12px; min-height:1.4em;}
+  .status.err{color:var(--lamp-deep);}
+  .credit{margin-top:18px; font-size:10px; letter-spacing:.08em; color:var(--faint);}
+  .credit a{color:var(--mute); text-decoration:none; border-bottom:1px solid var(--faint); transition:.25s;}
+  .credit a:hover{color:var(--lamp); border-color:var(--lamp);}
+</style>
+</head>
+<body>
+
+<div id="start">
+  <div class="brand">Radio <em>Midnight</em></div>
+  <div class="tagline">📻 Radio from round midnight, round the world 🌍</div>
+  <button class="tune-btn" id="tuneBtn">Tune in</button>
+</div>
+
+<div class="wrap">
+  <div id="main">
+    <div class="topline"><span>Radio Midnight</span><span class="live"><span class="dotpulse"></span> On air</span></div>
+
+    <div class="now">
+      <div class="city" id="city">&mdash;</div>
+      <div class="country" id="country">&nbsp;</div>
+    </div>
+
+    <div class="strip">
+      <svg id="map" viewBox="0 0 360 180" preserveAspectRatio="none">
+        <defs><linearGradient id="nb" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0b1018" stop-opacity="0"/>
+          <stop offset="50%" stop-color="#04060b" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#0b1018" stop-opacity="0"/></linearGradient></defs>
+        <rect class="nightband" x="120" y="0" width="120" height="180"></rect>
+        <g id="latgrid"></g>
+        <g id="world"><g id="vgrid"></g>
+          <path class="land" d="" transform="translate(-360 0)"></path>
+          <path class="land" d="" transform="translate(0 0)"></path>
+          <path class="land" d="" transform="translate(360 0)"></path></g>
+        <line class="equator" x1="0" y1="90" x2="360" y2="90"></line>
+        <line class="meridian-glow" x1="180" y1="0" x2="180" y2="180"></line>
+        <line class="meridian" x1="180" y1="0" x2="180" y2="180"></line>
+        <text class="meridlabel" x="180" y="10">00:00</text>
+        <circle class="star-halo" id="halo" cx="180" cy="90" r="6"></circle>
+        <circle class="star" id="star" cx="180" cy="90" r="2.6"></circle>
+      </svg>
+      <div class="striplabel" style="left:10px">&larr; west</div>
+      <div class="striplabel" style="right:10px">east &rarr;</div>
+    </div>
+
+    <div class="station">
+      <div class="label">Now playing</div>
+      <div class="name" id="stName">&mdash;</div>
+      <div class="meta" id="stMeta"></div>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="playBtn">Pause</button>
+      <button class="ctrl-btn" id="skipBtn">Skip &#9654;</button>
+      <div class="slider-wrap"><span>vol</span><input type="range" id="volume" min="0" max="1" step="0.05" value="0.8"></div>
+      <div class="countdown">next in <b id="cd">&mdash;</b></div>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="credit">Created by <a href="https://github.com/joelucadooley/radio-midnight" target="_blank" rel="noopener">Joe Luca Dooley</a></div>
+  </div>
+</div>
+
+<audio id="audioA"></audio>
+<audio id="audioB"></audio>
+
+<script>
+"use strict";
+const DWELL_MS=45000, PRECUE_MS=6000, XFADE_MS=700, CONNECT_MS=5000;
+
+/* ===== Radio Browser ===== */
+const SERVERS=["https://de1.api.radio-browser.info","https://fi1.api.radio-browser.info","https://nl1.api.radio-browser.info","https://all.api.radio-browser.info"];
+async function rbFetch(path){ for(const s of SERVERS){ try{ const r=await fetch(s+path,{headers:{"Accept":"application/json"}}); if(r.ok) return await r.json(); }catch(e){} } throw new Error("unreachable"); }
+
+/* ===== country ring ===== */
+const COUNTRIES=[
+  ["NZ","New Zealand",174,-41],["FJ","Fiji",178,-17],["AU","Australia",134,-25],["JP","Japan",138,36],
+  ["KR","South Korea",128,36],["PH","Philippines",122,13],["ID","Indonesia",118,-2],["CN","China",104,35],
+  ["VN","Vietnam",106,16],["MY","Malaysia",102,4],["TH","Thailand",101,15],["SG","Singapore",104,1],
+  ["MM","Myanmar",96,21],["BD","Bangladesh",90,24],["NP","Nepal",84,28],["IN","India",79,22],
+  ["LK","Sri Lanka",81,7],["PK","Pakistan",69,30],["KZ","Kazakhstan",67,48],["AF","Afghanistan",67,33],
+  ["OM","Oman",56,21],["AE","United Arab Emirates",54,24],["IR","Iran",53,32],["SA","Saudi Arabia",45,24],
+  ["IQ","Iraq",44,33],["KE","Kenya",38,0],["RU","Russia",37,56],["TR","Turkiye",35,39],["UA","Ukraine",32,49],
+  ["EG","Egypt",30,27],["ZA","South Africa",25,-29],["FI","Finland",26,64],["GR","Greece",22,39],
+  ["RO","Romania",25,46],["PL","Poland",19,52],["SE","Sweden",16,62],["CZ","Czechia",15,50],
+  ["AT","Austria",14,47],["IT","Italy",12,42],["DE","Germany",10,51],["NO","Norway",9,61],
+  ["NG","Nigeria",8,9],["FR","France",2,47],["GB","United Kingdom",-2,54],["ES","Spain",-4,40],
+  ["MA","Morocco",-7,32],["IE","Ireland",-8,53],["PT","Portugal",-8,39],["SN","Senegal",-14,14],
+  ["IS","Iceland",-19,65],["CV","Cabo Verde",-24,16],["BR","Brazil",-50,-12],["UY","Uruguay",-56,-33],
+  ["AR","Argentina",-64,-38],["CL","Chile",-71,-33],["BO","Bolivia",-65,-17],["PY","Paraguay",-58,-23],
+  ["US","United States",-98,39],["CO","Colombia",-74,4],["PE","Peru",-75,-10],["MX","Mexico",-102,23],["CA","Canada",-106,56]
+].map(([code,name,lon,lat])=>({code,name,lon,lat})).sort((a,b)=>b.lon-a.lon);
+
+/* ===== geometry ===== */
+function norm(lon){ return ((lon+540)%360)-180; }
+function midnightLon(d=new Date()){ const h=d.getUTCHours()+d.getUTCMinutes()/60+d.getUTCSeconds()/3600; return norm(-15*h); }
+function lonToX(lon){ return lon+180; }
+function latToY(lat){ return (90-lat)/180*180; }
+
+/* ===== state ===== */
+let countryIdx=0, playlist=[], plPos=0, current=null;
+let paused=false, userVol=0.8;
+let active=-1, cued=null, cueing=false, committing=false, commitASAP=false, nextHopAt=0;
+const $ = id=>document.getElementById(id);
+const els=[$("audioA"),$("audioB")];
+els.forEach(e=>{ e.volume=0; });
+
+/* ===== static grids ===== */
+(function(){
+  let lat=""; for(const y of [30,60,-30,-60]){ const Y=latToY(y); lat+='<line class="grid" x1="0" y1="'+Y+'" x2="360" y2="'+Y+'"/>'; }
+  $("latgrid").innerHTML=lat;
+  let v=""; for(const off of [-360,0,360]) for(let lon=-180;lon<180;lon+=30){ const x=lonToX(lon)+off; v+='<line class="grid" x1="'+x+'" y1="0" x2="'+x+'" y2="180"/>'; }
+  $("vgrid").innerHTML=v;
+})();
+
+/* ===== world map ===== */
+async function loadMap(){
+  const urls=["https://cdn.jsdelivr.net/gh/martynafford/natural-earth-geojson@master/110m/physical/ne_110m_land.json",
+              "https://raw.githubusercontent.com/martynafford/natural-earth-geojson/master/110m/physical/ne_110m_land.json"];
+  for(const u of urls){ try{ const r=await fetch(u); if(!r.ok) continue; drawMap(await r.json()); return; }catch(e){} }
+}
+function ringPath(ring){ let s=""; for(let i=0;i<ring.length;i++){ const c=ring[i]; s+=(i?"L":"M")+lonToX(c[0]).toFixed(1)+" "+latToY(c[1]).toFixed(1)+" "; } return s+"Z "; }
+function drawMap(gj){ let d=""; for(const f of (gj.features||[])){ const g=f.geometry; if(!g)continue;
+    const polys=g.type==="Polygon"?[g.coordinates]:g.type==="MultiPolygon"?g.coordinates:[];
+    for(const poly of polys) for(const ring of poly) d+=ringPath(ring); }
+  if(d) document.querySelectorAll(".land").forEach(p=>p.setAttribute("d",d)); }
+
+/* ===== display ===== */
+function showNow(st){ current=st; const c=COUNTRIES[countryIdx];
+  $("city").textContent=c.name; $("country").textContent=st.state||"\u00a0";
+  $("stName").textContent=st.name;
+  const bits=[]; if(st.tags)bits.push(st.tags); if(st.codec)bits.push(st.codec); if(st.bitrate)bits.push(st.bitrate+"k");
+  $("stMeta").textContent=bits.join("  \u00b7  "); }
+function setStatus(m,err){ const el=$("status"); el.textContent=m||""; el.className="status"+(err?" err":""); }
+
+/* ===== station selection ===== */
+async function loadCountry(idx){
+  countryIdx=((idx%COUNTRIES.length)+COUNTRIES.length)%COUNTRIES.length;
+  const c=COUNTRIES[countryIdx]; setStatus("scanning "+c.name+"\u2026");
+  let raw=[]; try{ raw=await rbFetch("/json/stations/search?countrycode="+c.code+"&hidebroken=true&order=clickcount&reverse=true&limit=120"); }
+  catch(e){ setStatus("can't reach the station database \u2014 check your network.",true); return false; }
+  const seen=new Set();
+  const list=raw.map((s,rank)=>{ const url=(s.url_resolved||s.url||"").trim(); let lon=parseFloat(s.geo_long),lat=parseFloat(s.geo_lat);
+      if(!isFinite(lon))lon=c.lon; if(!isFinite(lat))lat=c.lat;
+      return {name:(s.name||"Unknown").trim().replace(/\s+/g," "),url,lon,lat,pop:rank,state:(s.state||"").trim(),codec:s.codec,bitrate:s.bitrate,tags:(s.tags||"").split(",")[0]}; })
+    .filter(s=>s.url.startsWith("https://"))
+    .filter(s=>{ const k=s.url.toLowerCase(); if(seen.has(k))return false; seen.add(k); return true; });
+  if(!list.length) return false;
+  list.sort((a,b)=>b.lon-a.lon);                              /* east -> west for the drift */
+  const L=midnightLon();
+  let near=[]; for(let i=0;i<list.length;i++) if(Math.abs(norm(list[i].lon-L))<=12) near.push(i);
+  if(!near.length) for(let i=0;i<list.length;i++) near.push(i);
+  near.sort((a,b)=>list[a].pop-list[b].pop);                  /* most popular first = reliable */
+  const top=near.slice(0,8);                                  /* variety among the reliable ones */
+  playlist=list; plPos=top[Math.floor(Math.random()*top.length)];
+  return true;
+}
+async function nextCountryWest(){ for(let s=1;s<=COUNTRIES.length;s++){ if(await loadCountry(countryIdx+s)) return true; } setStatus("no playable streams nearby.",true); return false; }
+async function pickNextStation(){ plPos++; if(plPos>=playlist.length){ if(!await nextCountryWest()) return null; } return playlist[plPos]; }
+
+/* ===== connect a station on an element, fully muted (silent test) ===== */
+function waitReady(el,ms){ return new Promise((resolve,reject)=>{ let done=false;
+  const ok=()=>fin(resolve), bad=()=>fin(reject), to=setTimeout(bad,ms);
+  function fin(fn){ if(done)return; done=true; clearTimeout(to); el.removeEventListener("playing",ok); el.removeEventListener("error",bad); fn(); }
+  el.addEventListener("playing",ok); el.addEventListener("error",bad); }); }
+function connect(el,st){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=(ok)=>{ if(done)return; done=true; clearTimeout(to); el.removeEventListener("playing",onPlay); el.removeEventListener("error",onErr); resolve(ok); };
+    const onPlay=()=>finish(true), onErr=()=>finish(false);
+    const to=setTimeout(()=>finish(!el.paused && el.readyState>=3), CONNECT_MS);
+    el.addEventListener("playing",onPlay); el.addEventListener("error",onErr);
+    el.muted=true; el.volume=0; el.src=st.url; el.load();
+    const p=el.play(); if(p&&p.catch) p.catch(()=>{});
+    if(!el.paused && el.readyState>=3) finish(true);
+  });
+}
+
+/* ===== equal-power volume crossfade ===== */
+function crossfade(fromEl,toEl,ms){
+  toEl.muted=false;
+  const t0=performance.now();
+  (function step(){ const x=Math.min(1,(performance.now()-t0)/ms);
+    const out=Math.cos(x*Math.PI/2), inn=Math.sin(x*Math.PI/2);
+    if(fromEl) fromEl.volume=out*userVol; toEl.volume=inn*userVol;
+    if(x<1) requestAnimationFrame(step); else { if(fromEl) fromEl.volume=0; toEl.volume=userVol; }
+  })();
+}
+
+/* ===== pre-cue next, then commit ===== */
+async function cueNext(){
+  if(cueing||committing||active<0) return; cueing=true;
+  const idx=1-active; let st=await pickNextStation(), tries=0, ok=false;
+  while(st && tries<8){ if(await connect(els[idx],st)){ ok=true; break; } st=await pickNextStation(); tries++; }
+  if(!ok){ cueing=false; return; }
+  cued={idx, station:st}; cueing=false; setStatus("");
+  if(commitASAP || Date.now()>=nextHopAt) commit();
+}
+function commit(){
+  if(committing||!cued) return; committing=true;
+  const old=active, toEl=els[cued.idx], st=cued.station;
+  showNow(st); crossfade(old>=0?els[old]:null, toEl, XFADE_MS); active=cued.idx;
+  if(old>=0){ const oe=els[old]; setTimeout(()=>{ try{oe.pause();}catch(e){} }, XFADE_MS+250); }
+  nextHopAt=Date.now()+DWELL_MS; cued=null; commitASAP=false; committing=false;
+}
+
+/* ===== tick: scroll map, drive schedule ===== */
+function tick(){
+  const L=midnightLon();
+  $("world").setAttribute("transform","translate("+(-L)+" 0)");
+  if(current){ const x=180+norm(current.lon-L), y=latToY(current.lat);
+    $("star").setAttribute("cx",x); $("star").setAttribute("cy",y); $("halo").setAttribute("cx",x); $("halo").setAttribute("cy",y); }
+  if(!paused && active>=0){ const now=Date.now();
+    if(!cued && !cueing && now>=nextHopAt-PRECUE_MS) cueNext();
+    if(cued && !committing && now>=nextHopAt) commit();
+    const left=Math.max(0,nextHopAt-now);
+    $("cd").textContent=Math.floor(left/60000)+":"+String(Math.floor((left%60000)/1000)).padStart(2,"0"); }
+  requestAnimationFrame(tick);
+}
+
+/* ===== controls ===== */
+$("volume").addEventListener("input",e=>{ userVol=+e.target.value; if(active>=0) els[active].volume=userVol; });
+$("skipBtn").addEventListener("click",()=>{ if(committing||active<0) return; if(cued) commit(); else { commitASAP=true; if(!cueing) cueNext(); } });
+$("playBtn").addEventListener("click",()=>{ if(active<0) return; const el=els[active];
+  if(el.paused){ el.play(); paused=false; $("playBtn").textContent="Pause"; nextHopAt=Date.now()+DWELL_MS; }
+  else { el.pause(); paused=true; $("playBtn").textContent="Play"; } });
+
+/* ===== boot ===== */
+async function boot(){
+  const L=midnightLon();
+  const near=COUNTRIES.map((c,i)=>({i,d:Math.abs(norm(c.lon-L))})).sort((a,b)=>a.d-b.d);
+  const pool=near.filter(o=>o.d<=18).slice(0,4); if(!pool.length) pool.push(near[0]);
+  let ok=await loadCountry(pool[Math.floor(Math.random()*pool.length)].i); if(!ok) ok=await nextCountryWest(); if(!ok) return;
+  setStatus("tuning in\u2026");
+  let st=playlist[plPos], tries=0, started=false;
+  while(st && tries<8){ if(await connect(els[0],st)){ started=true; break; } st=await pickNextStation(); tries++; }
+  if(!started){ setStatus("couldn't find a playable stream right now \u2014 try again shortly.",true); return; }
+  showNow(st); crossfade(null, els[0], XFADE_MS); active=0; nextHopAt=Date.now()+DWELL_MS; setStatus("");
+}
+$("tuneBtn").addEventListener("click",()=>{ $("start").classList.add("hide"); $("main").classList.add("show"); requestAnimationFrame(tick); boot(); });
+
+loadMap();
+</script>
+</body>
+</html>
