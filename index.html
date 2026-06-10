@@ -141,7 +141,7 @@
 
 <script>
 "use strict";
-const DWELL_MS=45000, PRECUE_MS=6000, XFADE_MS=700, CONNECT_MS=5000;
+const DWELL_MS=45000, PRECUE_MS=6000, XFADE_MS=500, CONNECT_MS=5000;
 
 /* ===== Radio Browser ===== */
 const SERVERS=["https://de1.api.radio-browser.info","https://fi1.api.radio-browser.info","https://nl1.api.radio-browser.info","https://all.api.radio-browser.info"];
@@ -251,15 +251,28 @@ function connect(el,st){
   });
 }
 
-/* ===== equal-power volume crossfade ===== */
+/* ===== equal-power crossfade: wall-clock based, guaranteed cleanup ===== */
+let fadeTimer=null, fadeDone=null;
 function crossfade(fromEl,toEl,ms){
+  if(fadeTimer){ clearInterval(fadeTimer); fadeTimer=null; }
+  if(fadeDone){ fadeDone(); fadeDone=null; }          /* finish any prior fade instantly */
   toEl.muted=false;
-  const t0=performance.now();
-  (function step(){ const x=Math.min(1,(performance.now()-t0)/ms);
+  const t0=Date.now();
+  const finalize=()=>{
+    if(fadeTimer){ clearInterval(fadeTimer); fadeTimer=null; }
+    fadeDone=null;
+    if(fromEl){ fromEl.volume=0; try{ fromEl.pause(); }catch(e){} }
+    toEl.volume=userVol;
+  };
+  fadeDone=finalize;
+  fadeTimer=setInterval(()=>{
+    const x=Math.min(1,(Date.now()-t0)/ms);            /* real elapsed time: a stalled timer skips to the end */
     const out=Math.cos(x*Math.PI/2), inn=Math.sin(x*Math.PI/2);
-    if(fromEl) fromEl.volume=out*userVol; toEl.volume=inn*userVol;
-    if(x<1) requestAnimationFrame(step); else { if(fromEl) fromEl.volume=0; toEl.volume=userVol; }
-  })();
+    if(fromEl) fromEl.volume=Math.max(0,Math.min(1,out*userVol));
+    toEl.volume=Math.max(0,Math.min(1,inn*userVol));
+    if(x>=1) finalize();
+  },40);
+  setTimeout(finalize, ms+200);                        /* hard stop for the old stream no matter what */
 }
 
 /* ===== pre-cue next, then commit ===== */
@@ -275,23 +288,26 @@ function commit(){
   if(committing||!cued) return; committing=true;
   const old=active, toEl=els[cued.idx], st=cued.station;
   showNow(st); crossfade(old>=0?els[old]:null, toEl, XFADE_MS); active=cued.idx;
-  if(old>=0){ const oe=els[old]; setTimeout(()=>{ try{oe.pause();}catch(e){} }, XFADE_MS+250); }
   nextHopAt=Date.now()+DWELL_MS; cued=null; commitASAP=false; committing=false;
 }
 
-/* ===== tick: scroll map, drive schedule ===== */
+/* ===== tick: scroll map (visual only) ===== */
 function tick(){
   const L=midnightLon();
   $("world").setAttribute("transform","translate("+(-L)+" 0)");
   if(current){ const x=180+norm(current.lon-L), y=latToY(current.lat);
     $("star").setAttribute("cx",x); $("star").setAttribute("cy",y); $("halo").setAttribute("cx",x); $("halo").setAttribute("cy",y); }
-  if(!paused && active>=0){ const now=Date.now();
-    if(!cued && !cueing && now>=nextHopAt-PRECUE_MS) cueNext();
-    if(cued && !committing && now>=nextHopAt) commit();
-    const left=Math.max(0,nextHopAt-now);
+  if(!paused && active>=0){ const left=Math.max(0,nextHopAt-Date.now());
     $("cd").textContent=Math.floor(left/60000)+":"+String(Math.floor((left%60000)/1000)).padStart(2,"0"); }
   requestAnimationFrame(tick);
 }
+/* ===== scheduler: steady clock so hops continue with the screen off ===== */
+setInterval(()=>{
+  if(paused || active<0) return;
+  const now=Date.now();
+  if(!cued && !cueing && now>=nextHopAt-PRECUE_MS) cueNext();
+  if(cued && !committing && now>=nextHopAt) commit();
+},1000);
 
 /* ===== controls ===== */
 $("volume").addEventListener("input",e=>{ userVol=+e.target.value; if(active>=0) els[active].volume=userVol; });
